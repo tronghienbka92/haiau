@@ -1,0 +1,282 @@
+﻿@model ListPhieuChuyenTienModel
+@using Nop.Web.Models.ChuyenPhatNhanh
+@using Nop.Core.Domain.NhaXes
+@{
+    Layout = "~/Views/Shared/_NhaXeLayout.cshtml";
+}
+
+<table style="width:100%">
+    <tr>
+        <td style="text-align:left;border-right:2px solid #808080;border-bottom:2px solid #808080; ">
+            <span style="font-weight:bold;font-size:15px">Danh sách phiếu chuyển phát nhanh</span> [<span style="color:red;font-style:italic">Bạn đang thao tác tại văn phòng: <strong>@Model.TenVanPhongHienTai</strong></span>]
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <table style="width:100%">
+                <tr>
+                    <td>
+                        <table style="width:100%">
+                            <tr>
+                                <td style="text-align:right;width:80px;">
+                                    Ngày ký gửi:
+                                </td>
+                                <td style="width:120px;">
+                                    @Html.EditorFor(m => m.NgayTao)
+                                </td>
+                                <td>
+                                    @Html.TextBoxFor(model => model.HangHoaInfo, new { placeholder = "Thông tin người gửi, nhận", @style = "width:95%" })
+                                </td>
+                                <td style="width:120px;">
+                                    <input type="button" id="btnTimKiem" class="k-button" value="Lọc" style="width:100%" />
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align:right">
+                        <div id="actNhanHang" style="width:100%">
+                            <input type="button" id="btnGuiPhieu" class="k-button" value="Gửi đến văn phòng nhận" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div id="phieuchuyenphat-grid"></div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<script>
+    function LoadDanhSachPhieuChuyenTien() {
+        var _ngaytao = ConvertDateTimeSystem($('#@Html.FieldIdFor(model => model.NgayTao)').val());
+        var _trangthaiid = $('#@Html.FieldIdFor(model => model.TrangThaiId)').val();
+
+        var dataadd = {
+            HangHoaInfo: $('#@Html.FieldIdFor(model => model.HangHoaInfo)').val(),
+            NgayTao: _ngaytao,
+            TrangThaiId: @(Model.TrangThaiId),
+            VanPhongGuiId: '@(Model.VanPhongGuiId)'
+        };
+
+        $("#phieuchuyenphat-grid").kendoGrid({
+            dataSource: {
+                type: "json",
+                transport: {
+                    read: {
+                        url: "@Html.Raw(Url.Action("_PhieuChuyenTienList", "HangHoa"))",
+                        type: "POST",
+                        dataType: "json",
+                        data: dataadd
+                    }
+                },
+                schema: {
+                    data: "Data",
+                    total: "Total",
+                    errors: "Errors"
+                },
+                error: function (e) {
+                    display_kendoui_grid_error(e);
+                    // Cancel the changes
+                    this.cancelChanges();
+                },
+            },
+            scrollable: true,
+            columns: [{
+                field: "MaPhieu",
+                title: "Mã phiếu",
+                attributes: { style: "text-align:center" },
+                template: '<a href="javascript:ViewPBN(#=Id#)">#=MaPhieu#</a>'
+            }, {
+                field: "VanPhongNhanText",
+                title: "Văn phòng nhận"
+            }, {
+                field: "NguoiGui.HoTen",
+                title: "Tên người gửi",
+                template: "#=NguoiGui.HoTen#(#=NguoiGui.SoDienThoai#)"
+            }, {
+                field: "NguoiNhan.HoTen",
+                title: "Tên người nhận",
+                template: "#=NguoiNhan.HoTen#(#=NguoiNhan.SoDienThoai#)"
+            },{
+                field: "CuocPhi",
+                title: "Cước phí",
+                type: "number",
+                format: "{0:n0} đ",
+                attributes: { style: "text-align:right" },
+            }, {
+                field: "TongCuocDaThanhToan",
+                title: "Tổng cước đã thanh toán",
+                type: "number",
+                format: "{0:n0} đ",
+                attributes: { style: "text-align:right" },
+            }, {
+                field: "SoTienBangSo",
+                title: "Số tiền",
+                type: "number",
+                format: "{0:n0} đ",
+                attributes: { style: "text-align:right" },
+            }, {
+                field: "NgayTao",
+                title: "Ngày tạo",
+                type: "date",
+                format: "{0:HH:mm}",
+                attributes: { style: "text-align:center" },
+
+            }, {
+                field: "DaSMS",
+                title: "SMS",
+                template: '#=DaSMS==0?"Chưa":"Đã SMS("+DaSMS+")"#',
+                attributes: { style: "text-align:center" },
+                headerAttributes: { style: "text-align: center;" }
+            }, {
+                field: "Id",
+                headerTemplate: "<input id='mastercheckbox' type='checkbox'/>",
+                headerAttributes: { style: "text-align:center" },
+                title: "&nbsp;",
+                width: 50,
+                attributes: { style: "text-align:center" },
+                template: '#=(TrangThaiId==1)?"<input type=\'checkbox\' data-id="+Id+" class=\'phieuchuyenphat_checkbox\' />":""# '
+            }]
+        });
+
+    }
+    function getPhieuChuyenTienCheck(isAll) {
+        var _ret = "";
+        $('.phieuchuyenphat_checkbox').each(function () {
+            if (this.checked || isAll) {
+                var _id = $(this).attr('data-id');
+                if (_ret == "")
+                    _ret = _id;
+                else
+                    _ret = _ret + "," + _id;
+            }
+        });
+        return _ret;
+    }
+    function GuiPhieuChuyenTien(Ids) {
+        showProgessData("Đang xử lý dữ liệu, xin vui lòng chờ ....");
+        var _data = {
+            SelectIds: Ids
+        };
+        $.ajax({
+            cache: false,
+            type: "POST",
+            data: _data,
+            dataType: 'json',
+            url: "@(Url.Action("_GuiDenVanPhongNhan", "HangHoa"))",
+            success: function (data) {
+                if (data == "OK") {
+                    alert("Gửi thành công!");
+                    LoadDanhSachPhieuChuyenTien();
+                }
+                else {
+                    alert(data);
+                }
+                hideProgessData("");
+            },
+        });
+    }
+    function NhanTinPhieuChuyenPhat(Ids) {
+        showProgessData("Đang xử lý dữ liệu, xin vui lòng chờ ....");
+        var _data = {
+            SelectIds: Ids
+        };
+        $.ajax({
+            cache: false,
+            type: "POST",
+            data: _data,
+            dataType: 'json',
+            url: "@(Url.Action("_NhanTinPhieuChuyenTien", "HangHoa"))",
+            success: function (data) {
+                alert(data);
+                hideProgessData("");
+                LoadDanhSachPhieuChuyenTien();
+            },
+        });
+    }
+    function NhanPhieuChuyenTien(Ids) {
+        var _data = {
+            SelectIds: Ids
+        };
+        $.ajax({
+            cache: false,
+            type: "POST",
+            data: _data,
+            dataType: 'json',
+            url: "@(Url.Action("_NhanPhieuChuyenTien", "HangHoa"))",
+            success: function (data) {
+                if (data == "OK") {
+                    alert("Nhận hàng thành công!");
+                    // CloseNhanPhieuVanChuyen();
+                    LoadDanhSachPhieuChuyenTien();
+                }
+                else {
+                    alert(data);
+                }
+            },
+        });
+    }
+
+    function showProgessData(message) {
+        $('.throbber-header').html(message);
+        $(".throbber").show();
+
+    }
+
+    function hideProgessData(message) {
+        $(".throbber").hide();
+    }
+    $(document).ready(function () {
+        LoadDanhSachPhieuChuyenTien();
+        $("#@Html.FieldIdFor(m=>m.TrangThaiId)").change(function (event) {
+            if ($('#@Html.FieldIdFor(model => model.TrangThaiId)').val() == "@((int)ENTrangThaiChuyenTien.DangGuiTien)") {
+                hibutton(false);
+            }
+            if ($('#@Html.FieldIdFor(model => model.TrangThaiId)').val() == "@((int)ENTrangThaiChuyenTien.DenVanPhongNhan)") {
+                hibutton(true);
+            }
+            LoadDanhSachPhieuChuyenTien();
+        });
+        $('#btnTimKiem').click(function () {
+            LoadDanhSachPhieuChuyenTien();
+        });
+        $('#mastercheckbox').click(function () {
+            $('.phieuchuyenphat_checkbox').attr('checked', $(this).is(':checked')).change();
+        });
+        $('#btnGuiPhieu').click(function () {
+            var ids = getPhieuChuyenTienCheck(false);
+            if (ids == "") {
+                alert("Bạn chưa chọn nhận phiếu nào");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn gửi không?"))
+                GuiPhieuChuyenTien(ids);
+        });
+        $("#phieuchuyenphat-grid").kendoTooltip({
+            filter: "td", //this filter selects the second column's cells
+            position: "right",
+            content: function (e) {
+                var dataItem = $("#phieuchuyenphat-grid").data("kendoGrid").dataItem(e.target.closest("tr"));
+                var content = "<div style='text-align:left'><strong>Thông tin:</strong> " + dataItem.MaPhieu + " - " + dataItem.TenHang + " (" + kendo.toString(dataItem.NgayNhanHang, "dd/MM/yyyy") + ")<br />";
+                content = content + "<strong>Văn phòng nhận:</strong> " + dataItem.VanPhongNhanText + "<br />";
+                content = content + "<strong>Người gửi:</strong> " + dataItem.NguoiGuiText + " - " + "<strong>Người nhận:</strong> " + dataItem.NguoiNhanText + "<br />";
+                content = content + "<strong>Người tạo:</strong> " + dataItem.TenNhanvienGiaoDich + "<br />";
+                content = content + "<strong>Tổng cước:</strong> " + kendo.toString(dataItem.CuocPhi, "n0") + " đ" + " - " + "<strong>Đã TT:</strong> " + kendo.toString(dataItem.TongCuocDaThanhToan, "n0") + " đ";
+                content = content + "</div>";
+                return content;
+            }
+        }).data("kendoTooltip");
+    });
+
+</script>
+
+
+<style>
+    .k-grid table tr:hover td {
+        background: rgba(220, 239, 173, 0.38) !important;
+    }
+</style>

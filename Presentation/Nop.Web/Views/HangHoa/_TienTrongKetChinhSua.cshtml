@@ -1,0 +1,169 @@
+﻿@model TienTrongKetModel
+@using Nop.Web.Models.ChuyenPhatNhanh
+@{
+    String _lbcapnhat = "Tạo mới";
+    if (Model.Id > 0)
+    {
+        _lbcapnhat = "Cập nhật";
+    }
+}
+<table style="width:100%">
+    <tr>
+        <td style="text-align:left;">
+            <table style="width:100%">
+                <tr>
+                    <td>
+                        @if (Model.Id > 0)
+                        {
+                            <h3>Sửa tiền trong két đầu ca</h3>
+                        }
+                        else
+                        {
+                            <h3>Tạo mới tiền trong két đầu ca</h3>
+                        }
+                    </td>
+                    <td style="width:120px"></td>
+                </tr>
+            </table>
+            <hr style="border:1px dashed #531010" />
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <table style="width:100%;border-collapse:collapse">
+                <tr>
+                    <td colspan="2" class="phieuchuyenphat_border_td">
+                        <table>
+                            <tr>
+                                <td style="width:120px;text-align:left">
+                                    Tiền vốn:
+                                </td>
+                                <td>
+                                    @Html.EditorFor(model => model.SoTien)
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="phieuchuyenphat_border_td">
+                        <table>
+                            <tr>
+                                <td style="width:120px;text-align:left">
+                                    Tiền cước:
+                                </td>
+                                <td>
+                                    @Html.EditorFor(model => model.TienCuoc)
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="phieuchuyenphat_border_td">
+                        <table>
+                            <tr>
+                                <td style="width:120px;text-align:left">
+                                    Ghi chú:
+                                </td>
+                                <td>
+                                    @Html.EditorFor(model => model.GhiChu)
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align:right">
+
+            @if (Model.Id > 0)
+            {
+                <input type="button" id="btnXoaPhieu" class="k-button" value="Xóa phiếu" />
+            }
+            else
+            {
+                <input type="button" id="btnCapNhat" class="k-button" value="@_lbcapnhat" />
+            }
+        </td>
+    </tr>
+</table>
+<div id="tabEditToVanChuyen" style="display:none"></div>
+<script>
+
+    $(document).ready(function () {
+
+        $('#btnCapNhat').click(function () {
+            //kiem tra thong tin du lieu
+            var _sotien = parseInt($("#@Html.FieldIdFor(m => m.SoTien)").val());
+
+
+            var _ngaytao = ConvertDateTimeSystem($('#@Html.FieldIdFor(model => model.NgayTao)').val());
+            var _data = {
+                "Id": '@Model.Id',
+                "SoTien": _sotien,
+                "GhiChu": $("#@Html.FieldIdFor(m=>m.GhiChu)").val(),
+                "VanPhongId" : @Model.VanPhongId,
+                "NgayTao": _ngaytao
+        };
+
+        $('#btnCapNhat').prop('disabled', true);
+        $.ajax({
+            cache: false,
+            type: "POST",
+            data: _data,
+            dataType: 'json',
+            url: "@(Url.Action("TienTrongKetChinhSua", "HangHoa"))",
+            success: function (data) {
+                if (data == "OK") {
+                    LoadPhieuChuyenTien(0);
+                    LoadDanhSach();
+                }
+                else {
+                    alert(data);
+                }
+                $('#btnCapNhat').prop('disabled', false);
+
+            },
+        });
+
+    });
+    $('#btnXoaPhieu').click(function () {
+        if (!confirm("Bạn có chắc chắn xóa phiếu chuyển phát này không ?"))
+            return;
+        $.ajax({
+            cache: false,
+            type: "POST",
+            data: { "Id": '@Model.Id' },
+            dataType: 'json',
+            url: "@(Url.Action("PhieuChuyenPhatXoa", "HangHoa"))",
+            success: function (data) {
+                if (data == "OK") {
+                    alert("Xóa phiếu thành công!");
+                    LoadPhieuChuyenTien(0);
+                    LoadDanhSach();
+                }
+                else {
+                    alert(data);
+                }
+
+            },
+        });
+    });
+    //tao phim enter
+
+    });
+
+</script>
+<style>
+    .phieuchuyenphat_border_td {
+        border: 1px solid #808080;
+    }
+
+    .phieuchuyenphat_tien {
+        font-weight: bold;
+        color: #531010;
+    }
+</style>
